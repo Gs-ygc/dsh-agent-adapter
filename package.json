@@ -1,0 +1,77 @@
+{
+  "name": "dsh-agent-adapter",
+  "version": "0.1.0",
+  "description": "External-agent adapter bundle for the DeepSeek Harness LLM seam — run codex (app-server) and ACP agents (opencode, kimi, pi, …) as DSH session providers",
+  "license": "MIT",
+  "author": "guangjun-super",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/guangjun-super/dsh-agent-adapter.git"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "codex",
+    "acp",
+    "agent-client-protocol",
+    "opencode",
+    "kimi",
+    "llm-provider"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client-ui.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-remotes"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "prebuild": "npm run clean",
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "clean": "rm -rf lib",
+    "prepublishOnly": "npm run build && npm run test:unit",
+    "test:integration": "node test/integration-codex.mjs && node test/integration-acp.mjs",
+    "test:unit": "node test/unit.mjs",
+    "test": "npm run test:unit"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-attachment": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-settings": "^0.1.1-rc.1"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-attachment": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.1.1-rc.1",
+    "@deepseek-ai/dsh-settings": "^0.1.1-rc.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.18",
+    "esbuild": "^0.28.2",
+    "react": "^19.2.8",
+    "typescript": "^5.8.0"
+  }
+}
