@@ -52,7 +52,7 @@ npm run test:integration   # 需要 PATH 上有真实的 `codex` 与 `opencode`
 
 ### 配置（可选）
 
-**无需任何配置即可使用。** PATH 上检测到的 agent（codex、opencode、kimi、pi-acp）默认启用并自动出现在模型选择器里。只有要覆盖默认参数或声明内置表之外的 agent 时才需要写设置——所有键热生效，也可在 Web 设置页 Models 里编辑：
+**无需任何配置即可使用。** PATH 上检测到的 agent（codex、opencode、kimi、pi-acp）默认启用并自动出现在模型选择器里。只有要覆盖默认参数或声明内置表之外的 agent 时才需要写设置——所有键热生效。（agent 路由有意不出现在「模型」设置页：那里的通用编辑器只认 API key 式的 provider 配置。请在「Agent 适配 / Agent Adapter」设置页或 `settings.yaml` 中管理 agent。）
 
 ```yaml
 agent-adapter:
@@ -144,7 +144,7 @@ DSH agent loop ──stream()──▶ AcpAdapter ──session/prompt──▶ 
 - **工具镜像（echo 展示工具）**：agent 的工具调用、计划、权限全在 agent 进程内部完成。codex 的 `commandExecution` / `fileChange` / `mcpToolCall` / `webSearch` 项与 ACP 的 `tool_call_update` 会被镜像为 DSH `tool-call` 块，指向注册在该会话 agent scope 上的**展示镜像工具**（`codex_command` / `codex_file_change` / `codex_mcp_tool` / `codex_web_search`，`acp_command` / `acp_file_change` / `acp_tool`）。其 `execute()` 只等待 adapter 预录的 agent 侧结果，**从不执行任何真实操作**；`presentCall` / `presentResult` 渲染意图让 UI 画出终端卡（命令 + 输出 + exit code）和编辑卡（路径 + diff），与 DSH 原生 bash/edit 卡片一致。一个外部 turn 因此可跨多个 DSH step，由 TurnPump 跨 `stream()` 调用组装 StreamChunk；turn 结束时若最后一个 echo 之后没有尾巴内容，该 echo 以 `final` 结算并 `concludeTurn()`，避免多余的空 step。无 DSH 会话身份的一次性调用回退为文本展示块。
 - **中断**：DSH stop → codex 侧 `turn/interrupt` / ACP 侧 `session/cancel` notification；回合以 `aborted` finish 结算，已产生的部分输出保留。**零重试**（`providerRetryPolicy` 固定为 0）——重发 prompt 会在 agent 侧重复执行。
 - **模型**：codex 的 `model/list` 与 ACP 的 scratch-session `configOptions` 分别喂给 DSH 模型选择器（5 分钟缓存）；每轮的 `model` / `effort` 覆盖会同步到 agent 侧（ACP 半按模型探测推理等级选项）；上下文窗口从 token 用量更新中学到并持久化。
-- **设置热拓扑**：`installSettingsSection` 驱动路由集合变化，经 `registerAdapter(routes).replace()` 与 `registerConfigurableProviders(...).replace()` 热替换（带重入保护）；移除路由即回收其进程。设置页读取 `/plugins/dsh-agent-adapter/state.json`（由 ACP 半提供，折叠 codex 半的 contribution），开关经普通 settings mutation 通道写入。
+- **设置热拓扑**：`installSettingsSection` 驱动路由集合变化，经 `registerAdapter(routes).replace()` 热替换（带重入保护）；移除路由即回收其进程。设置页读取 `/plugins/dsh-agent-adapter/state.json`（由 ACP 半提供，折叠 codex 半的 contribution），开关经普通 settings mutation 通道写入。
 - **client 半**：esbuild 打出的 CJS bundle，包进 `window.__ModuleLoader__.load({ id: 'dsh-agent-adapter' })`，React 外置；按 package.json 的 `dsh.client` 块以 `./client` 导出提供。
 
 codex 半特有：一个 thread 只允许一个活跃写入方，thread resume 假定上一个 app-server 进程已退出（harness 重启场景天然满足）。旧 thread 若锚定在错误目录，删除 `$DSH_HOME/llm-codex/sessions.json` 中对应条目即可重新锚定。

@@ -21,7 +21,6 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { deepEqualJson } from '@deepseek-ai/dsh-settings'
 import type { Context } from '@deepseek-ai/cordis'
-import type { LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
 import { CodexAdapter } from './adapter.js'
 import { effectiveRoutes, KNOWN_CODEX_AGENTS, scanInstalledAgents, type AgentDetection } from './agents.js'
 import { Config, resolveProfiles, type ResolvedProfile } from './config.js'
@@ -37,17 +36,6 @@ function defaultStateFile(): string {
 /** Read a host-plane service not declared on the cordis Context type. */
 function hostGet(ctx: Context, key: string): unknown {
   return (ctx as unknown as { get(name: string): unknown }).get(key)
-}
-
-/** Configurable-provider directory entries for every declared route. */
-function directoryEntries(profiles: Map<string, ResolvedProfile>): LlmConfigurableProvider[] {
-  return [...profiles.entries()].map(([provider, profile]) => ({
-    provider,
-    displayName: profile.displayName ?? provider,
-    settingsNs: AGENT_ADAPTER_NS,
-    settingsPath: ['codex', 'providers', provider],
-    declared: true,
-  }))
 }
 
 /** Config accepted by applyCodex; the codex slice of the combined plugin. */
@@ -183,26 +171,10 @@ export function applyCodex(ctx: Context, config: RawConfig) {
   })
   ctx.effect(() => () => adapter.dispose())
 
-  let directory: { replace(entries: LlmConfigurableProvider[]): void } | undefined
-  let directoryFacts: LlmConfigurableProvider[] | undefined
-  const ensureDirectory = () => {
-    const entries = directoryEntries(profiles())
-    if (deepEqualJson(entries, directoryFacts)) return
-    if (directory === undefined) {
-      // There is no built-in catalog, so the first settings hydration may
-      // still see zero profiles; registering an empty directory throws
-      // INVALID_DIRECTORY. Defer until onChange supplies one.
-      if (entries.length === 0) {
-        directoryFacts = entries
-        return
-      }
-      directory = ctx.llm.registerConfigurableProviders(entries)
-    } else {
-      // replace([]) is legal: commit() simply clears the held entries.
-      directory.replace(entries)
-    }
-    directoryFacts = entries
-  }
+  // No configurable-provider directory registration: the Models settings
+  // page's generic editor only understands API-key-style profiles, so agent
+  // routes (command/args profiles) would show up there as uneditable rows.
+  // Agent management lives on the「Agent 适配」settings page instead.
 
   let registration: { replace(routes: string[]): void } | undefined
   let registeredRoutes: string[] | undefined
@@ -227,12 +199,6 @@ export function applyCodex(ctx: Context, config: RawConfig) {
       ensureRegistration()
     } catch (error) {
       ctx.logger.error('llm-codex: keeping the previously registered routes after a refused update')
-      ctx.logger.error(error)
-    }
-    try {
-      ensureDirectory()
-    } catch (error) {
-      ctx.logger.error('llm-codex: keeping the previous configurable-provider directory after a refused update')
       ctx.logger.error(error)
     }
   }

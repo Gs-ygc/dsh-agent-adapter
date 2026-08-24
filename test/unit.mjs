@@ -300,8 +300,11 @@ console.log('✓ content-block frame shape also recovered')
   assert.ok(!acpCode.includes("settingsNamespace('llm-acp')"), 'acp half must not self-register llm-acp')
   const nsCode = readFileSync(new URL('../lib/ns.js', import.meta.url), 'utf8')
   assert.ok(nsCode.includes("settingsNamespace('agent-adapter')"), 'ns module owns the unified namespace')
-  assert.ok(codexCode.includes("['codex', 'providers', provider]"), 'codex directory entries nest under the unified ns')
-  assert.ok(acpCode.includes("['acp', 'providers', provider]"), 'acp directory entries nest under the unified ns')
+  // No configurable-provider directory: agent routes must not clutter the
+  // Models settings page (its generic editor cannot edit command/args
+  // profiles); management lives on the Agent Adapter settings page.
+  assert.ok(!codexCode.includes('registerConfigurableProviders'), 'codex half must not register a provider directory')
+  assert.ok(!acpCode.includes('registerConfigurableProviders'), 'acp half must not register a provider directory')
   console.log('✓ unified agent-adapter namespace: combined Config schema; halves expose hooks, no self-registration')
 }
 

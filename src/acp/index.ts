@@ -22,7 +22,6 @@ import { dirname, join } from 'node:path'
 import { homedir } from 'node:os'
 import { deepEqualJson } from '@deepseek-ai/dsh-settings'
 import type { Context } from '@deepseek-ai/cordis'
-import type { LlmConfigurableProvider } from '@deepseek-ai/dsh-llm'
 import { AcpAdapter } from './adapter.js'
 import { effectiveRoutes, KNOWN_ACP_AGENTS, scanInstalledAgents, sortAgentRows, type AgentDetection } from './agents.js'
 import { Config, resolveProfiles, type ResolvedProfile } from './config.js'
@@ -36,17 +35,6 @@ const STATE_PATH = '/plugins/dsh-agent-adapter/state.json'
 function defaultStateFile(): string {
   const home = process.env.DSH_HOME ?? join(homedir(), '.dsh')
   return join(home, 'llm-acp', 'sessions.json')
-}
-
-/** Configurable-provider directory entries for every declared route. */
-function directoryEntries(profiles: Map<string, ResolvedProfile>): LlmConfigurableProvider[] {
-  return [...profiles.entries()].map(([provider, profile]) => ({
-    provider,
-    displayName: profile.displayName ?? provider,
-    settingsNs: AGENT_ADAPTER_NS,
-    settingsPath: ['acp', 'providers', provider],
-    declared: true,
-  }))
 }
 
 export interface RawConfig {
@@ -158,38 +146,10 @@ export function applyAcp(
     toolDisposers.clear()
   })
 
-  let directory: { replace(entries: LlmConfigurableProvider[]): void } | undefined
-  let directoryFacts: LlmConfigurableProvider[] | undefined
-  const ensureDirectory = () => {
-    const entries = directoryEntries(profiles())
-    if (deepEqualJson(entries, directoryFacts)) return
-    if (directory === undefined) {
-      // Unlike llm-pi-ai there is no built-in catalog, so the first settings
-      // hydration may still see zero profiles; registering an empty directory
-      // throws INVALID_DIRECTORY. Defer until onChange supplies one.
-      if (entries.length === 0) {
-        directoryFacts = entries
-        return
-      }
-    }
-
-    // Registration publishes an adapters-updated event synchronously. Record
-    // the candidate first so a listener that re-enters this function does not
-    // try to register the same directory while the first call is still open.
-    const previousFacts = directoryFacts
-    directoryFacts = entries
-    try {
-      if (directory === undefined) {
-        directory = ctx.llm.registerConfigurableProviders(entries)
-      } else {
-        // replace([]) is legal: commit() simply clears the held entries.
-        directory.replace(entries)
-      }
-    } catch (error) {
-      directoryFacts = previousFacts
-      throw error
-    }
-  }
+  // No configurable-provider directory registration: the Models settings
+  // page's generic editor only understands API-key-style profiles, so agent
+  // routes (command/args profiles) would show up there as uneditable rows.
+  // Agent management lives on the「Agent 适配」settings page instead.
 
   let registration: { replace(routes: string[]): void } | undefined
   let registeredRoutes: string[] | undefined
@@ -203,8 +163,9 @@ export function applyAcp(
       }
     }
 
-    // registerAdapter/replace also publish synchronously; close the same
-    // re-entrancy window as the configurable-provider directory above.
+    // registerAdapter/replace also publish synchronously. Record the
+    // candidate first so a listener that re-enters this function does not
+    // try to register the same adapter while the first call is still open.
     const previousRoutes = registeredRoutes
     registeredRoutes = routes
     try {
@@ -225,12 +186,6 @@ export function applyAcp(
       ensureRegistration()
     } catch (error) {
       ctx.logger.error('llm-acp: keeping the previously registered routes after a refused update')
-      ctx.logger.error(error)
-    }
-    try {
-      ensureDirectory()
-    } catch (error) {
-      ctx.logger.error('llm-acp: keeping the previous configurable-provider directory after a refused update')
       ctx.logger.error(error)
     }
   }
