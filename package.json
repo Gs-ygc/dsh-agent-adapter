@@ -1,7 +1,7 @@
 {
   "name": "dsh-agent-adapter",
-  "version": "0.1.0",
-  "description": "External-agent adapter bundle for the DeepSeek Harness LLM seam — run codex (app-server) and ACP agents (opencode, kimi, pi, …) as DSH session providers",
+  "version": "0.1.0-fork.1",
+  "description": "External-agent adapter bundle for the DeepSeek Harness LLM seam \u2014 run codex (app-server) and ACP agents (opencode, kimi, pi, \u2026) as DSH session providers",
   "license": "MIT",
   "author": "guangjun-super",
   "repository": {
